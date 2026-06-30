@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家务播报 - 发送端</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; padding: 40px; max-width: 500px; margin: 0 auto; }
+        textarea { width: 100%; height: 100px; margin-bottom: 15px; padding: 10px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #007aff; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+        button:active { background: #0056b3; }
+        #status { margin-top: 15px; color: #666; font-size: 14px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h2>🏠 远程播报发送端</h2>
+    <textarea id="textInput" placeholder="输入你想在家里播报的内容..."></textarea>
+    <button id="sendBtn">📢 点击发送并播报</button>
+    <div id="status">正在连接服务...</div>
+
+    <script>
+        // 1. 替换成你自己的 Supabase 配置
+        const SUPABASE_URL = '你的_SUPABASE_PROJECT_URL';
+        const SUPABASE_KEY = '你的_SUPABASE_ANON_KEY';
+
+        // 2. 初始化 Supabase 客户端
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 3. 创建并订阅广播通道
+        const channel = supabase.channel('home-broadcast', {
+            config: { broadcast: { self: false } }
+        });
+
+        channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                document.getElementById('status').innerText = '🟢 服务连接成功，可以发送！';
+            } else {
+                document.getElementById('status').innerText = '🔴 连接状态：' + status;
+            }
+        });
+
+        // 4. 点击按钮发送消息
+        document.getElementById('sendBtn').addEventListener('click', async () => {
+            const input = document.getElementById('textInput');
+            const message = input.value.trim();
+            
+            if (!message) {
+                alert('请输入内容！');
+                return;
+            }
+
+            document.getElementById('status').innerText = '⚡ 正在发送...';
+
+            // 利用 Broadcast 广播给所有订阅了 'home-broadcast' 的客户端
+            const response = await channel.send({
+                type: 'broadcast',
+                event: 'tts-speak',
+                payload: { text: message }
+            });
+
+            if (response === 'ok') {
+                document.getElementById('status').innerText = '✅ 发送成功！';
+                input.value = ''; // 清空输入框
+                setTimeout(() => {
+                    document.getElementById('status').innerText = '🟢 服务连接成功，可以发送！';
+                }, 2000);
+            } else {
+                document.getElementById('status').innerText = '❌ 发送失败，请重试';
+            }
+        });
+    </script>
+</body>
+</html>

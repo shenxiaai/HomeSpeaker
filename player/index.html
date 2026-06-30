@@ -10,7 +10,7 @@
 <div id="text">等待广播...</div>
 
 <script>
-const ws = new WebSocket("wss://https://homespeaker.yuanbao-i-jj.workers.dev//ws");
+const ws = new WebSocket("wss://https://homespeaker.yuanbao-i-jj.workers.dev/ws");
 
 ws.onmessage = (event) => {
   const msg = JSON.parse(event.data);

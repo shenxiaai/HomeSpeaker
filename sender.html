@@ -50,23 +50,43 @@ button{
     border:1px solid #ddd;
     cursor:pointer;
 }
+
+#quickButtons{
+    margin-top:20px;
+}
+
+.quick{
+    width:auto;
+    padding:10px 18px;
+    margin:5px;
+    font-size:18px;
+}
 </style>
 
 </head>
 
 <body>
 
-<div class="container">
+  <div class="container">
 
-<h2>家庭广播</h2>
+    <h2>家庭广播</h2>
 
-<textarea id="text"></textarea>
+    <textarea id="text"></textarea>
 
-<button onclick="send()">发送</button>
+    <button onclick="send()">发送</button>
 
-<div id="status"></div>
+    <div id="status"></div>
 
-</div>
+    <h3>常用语</h3>
+
+    <div id="quickButtons">
+      <button class="quick" onclick="quickSend('糖糖糖，头抬高一点')">糖糖糖，头抬高一点</button>
+      <button class="quick" onclick="quickSend('糖糖糖，背挺直哦')">糖糖糖，背挺直哦</button>
+      <button class="quick" onclick="quickSend('开始学习')">📚 开始学习</button>
+      <button class="quick" onclick="quickSend('休息5分钟')">☕ 休息5分钟</button>
+    </div>
+
+  </div>
 
 <script>
 
@@ -79,15 +99,10 @@ const client=supabase.createClient(
 );
 
 async function send(){
-
     const text=document.getElementById("text").value.trim();
-
     if(text===""){
-
         alert("请输入内容");
-
         return;
-
     }
 
     document.getElementById("status").innerHTML="发送中...";
@@ -101,12 +116,9 @@ async function send(){
     ]);
 
     if(error){
-
         document.getElementById("status").innerHTML=
         "发送失败："+error.message;
-
         return;
-
     }
 
     document.getElementById("status").innerHTML="发送成功";
@@ -115,14 +127,15 @@ async function send(){
 
 }
 
+async function quickSend(text){
+    document.getElementById("text").value = text;
+    await send();
+}
+
 document.getElementById("text").addEventListener("keydown",e=>{
-
     if(e.ctrlKey&&e.key==="Enter"){
-
         send();
-
     }
-
 });
 
 </script>

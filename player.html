@@ -181,12 +181,6 @@ table:"messages"
 
     const row=payload.new;
 
-    if(row.id<=lastId){
-
-        return;
-
-    }
-
     lastId=row.id;
 
     queue.push(row);

@@ -1,78 +1,179 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家务播报 - 发送端</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: -apple-system, sans-serif; padding: 40px; max-width: 500px; margin: 0 auto; }
-        textarea { width: 100%; height: 100px; margin-bottom: 15px; padding: 10px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: #007aff; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
-        button:active { background: #0056b3; }
-        #status { margin-top: 15px; color: #666; font-size: 14px; text-align: center; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HomeSpeaker Sender</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    font-family:Arial;
+    background:#f4f4f4;
+    margin:30px;
+}
+
+.container{
+    max-width:700px;
+    margin:auto;
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,.1);
+}
+
+textarea{
+    width:100%;
+    height:150px;
+    font-size:20px;
+    padding:10px;
+    box-sizing:border-box;
+}
+
+button{
+    margin-top:15px;
+    width:100%;
+    height:50px;
+    font-size:22px;
+    cursor:pointer;
+}
+
+#status{
+    margin-top:20px;
+    color:green;
+}
+
+.history{
+    margin-top:30px;
+}
+
+.item{
+    padding:10px;
+    margin-top:10px;
+    border:1px solid #ddd;
+    cursor:pointer;
+}
+</style>
+
 </head>
+
 <body>
 
-    <h2>🏠 远程播报发送端</h2>
-    <textarea id="textInput" placeholder="输入你想在家里播报的内容..."></textarea>
-    <button id="sendBtn">📢 点击发送并播报</button>
-    <div id="status">正在连接服务...</div>
+<div class="container">
 
-    <script>
-        // 1. 替换成你自己的 Supabase 配置
-        const SUPABASE_URL = 'https://tkpwdoenhvzkxrwwomvn.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw';
+<h2>家庭广播</h2>
 
-        // 2. 初始化 Supabase 客户端
-        let supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+<textarea id="text"></textarea>
 
-        // 3. 创建并订阅广播通道
-        const channel = supabase.channel('home-broadcast', {
-            config: { broadcast: { self: false } }
-        });
+<button onclick="send()">发送</button>
 
-        channel.subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-                document.getElementById('status').innerText = '🟢 服务连接成功，可以发送！';
-                console.log('🟢 服务连接成功，可以发送！');
-            } else {
-                document.getElementById('status').innerText = '🔴 连接状态：' + status;
-                console.log('🔴 连接状态：' + status);
-            }
-        });
+<div id="status"></div>
 
-        // 4. 点击按钮发送消息
-        document.getElementById('sendBtn').addEventListener('click', async () => {
-            const input = document.getElementById('textInput');
-            console.log('输入内容为：' + input);
-            const message = input.value.trim();
-            
-            if (!message) {
-                alert('请输入内容！');
-                return;
-            }
+<div class="history">
 
-            document.getElementById('status').innerText = '⚡ 正在发送...';
+<h3>最近消息</h3>
 
-            // 利用 Broadcast 广播给所有订阅了 'home-broadcast' 的客户端
-            const response = await channel.send({
-                type: 'broadcast',
-                event: 'tts-speak',
-                payload: { text: message }
-            });
+<div id="history"></div>
 
-            if (response === 'ok') {
-                document.getElementById('status').innerText = '✅ 发送成功！';
-                input.value = ''; // 清空输入框
-                setTimeout(() => {
-                    document.getElementById('status').innerText = '🟢 服务连接成功，可以发送！';
-                }, 2000);
-            } else {
-                document.getElementById('status').innerText = '❌ 发送失败，请重试';
-            }
-        });
-    </script>
+</div>
+
+</div>
+
+<script>
+
+const SUPABASE_URL="https://tkpwdoenhvzkxrwwomvn.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw";
+
+const client=supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+const history=[];
+
+function renderHistory(){
+
+    const div=document.getElementById("history");
+
+    div.innerHTML="";
+
+    history.forEach(t=>{
+
+        const item=document.createElement("div");
+
+        item.className="item";
+
+        item.innerText=t;
+
+        item.onclick=()=>{
+
+            document.getElementById("text").value=t;
+
+        };
+
+        div.appendChild(item);
+
+    });
+
+}
+
+async function send(){
+
+    const text=document.getElementById("text").value.trim();
+
+    if(text===""){
+
+        alert("请输入内容");
+
+        return;
+
+    }
+
+    document.getElementById("status").innerHTML="发送中...";
+
+    const {error}=await client
+    .from("messages")
+    .insert({
+        content:text
+    });
+
+    if(error){
+
+        document.getElementById("status").innerHTML=
+        "发送失败："+error.message;
+
+        return;
+
+    }
+
+    history.unshift(text);
+
+    if(history.length>20){
+
+        history.pop();
+
+    }
+
+    renderHistory();
+
+    document.getElementById("status").innerHTML="发送成功";
+
+    document.getElementById("text").value="";
+
+}
+
+document.getElementById("text").addEventListener("keydown",e=>{
+
+    if(e.ctrlKey&&e.key==="Enter"){
+
+        send();
+
+    }
+
+});
+
+</script>
+
 </body>
 </html>

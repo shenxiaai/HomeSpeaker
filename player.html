@@ -125,6 +125,10 @@ function speakNext(){
 
     utter.lang="zh-CN";
 
+    speechSynthesis.cancel();
+
+    speechSynthesis.speak(utter);
+
     utter.rate=1;
 
     utter.pitch=1;

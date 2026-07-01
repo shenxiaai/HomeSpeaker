@@ -105,7 +105,9 @@ let lastId=0;
 
 document.body.addEventListener("click",()=>{
 
-    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance("播放器已启动");
+
+    speechSynthesis.speak(u);
 
 },{once:true});
 

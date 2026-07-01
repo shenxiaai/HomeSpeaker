@@ -44,10 +44,6 @@ button{
     color:green;
 }
 
-.history{
-    margin-top:30px;
-}
-
 .item{
     padding:10px;
     margin-top:10px;
@@ -70,14 +66,6 @@ button{
 
 <div id="status"></div>
 
-<div class="history">
-
-<h3>最近消息</h3>
-
-<div id="history"></div>
-
-</div>
-
 </div>
 
 <script>
@@ -89,34 +77,6 @@ const client=supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
 );
-
-const history=[];
-
-function renderHistory(){
-
-    const div=document.getElementById("history");
-
-    div.innerHTML="";
-
-    history.forEach(t=>{
-
-        const item=document.createElement("div");
-
-        item.className="item";
-
-        item.innerText=t;
-
-        item.onclick=()=>{
-
-            document.getElementById("text").value=t;
-
-        };
-
-        div.appendChild(item);
-
-    });
-
-}
 
 async function send(){
 
@@ -148,16 +108,6 @@ async function send(){
         return;
 
     }
-
-    history.unshift(text);
-
-    if(history.length>20){
-
-        history.pop();
-
-    }
-
-    renderHistory();
 
     document.getElementById("status").innerHTML="发送成功";
 

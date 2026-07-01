@@ -1,86 +1,222 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家务播报 - 接收端</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: -apple-system, sans-serif; background: #f5f5f7; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 80%; }
-        button { padding: 15px 30px; font-size: 18px; background: #34c759; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; }
-        #log { margin-top: 20px; color: #888; font-size: 14px; max-height: 150px; overflow-y: auto; }
-        .active { color: #34c759; font-weight: bold; }
-    </style>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>HomeSpeaker Player</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+body{
+
+    margin:0;
+
+    background:#222;
+
+    color:white;
+
+    font-family:Arial;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    height:100vh;
+
+}
+
+#box{
+
+    text-align:center;
+
+    width:90%;
+
+}
+
+#status{
+
+    color:#00ff88;
+
+    font-size:20px;
+
+    margin-bottom:30px;
+
+}
+
+#msg{
+
+    font-size:42px;
+
+    line-height:1.6;
+
+    word-break:break-all;
+
+}
+
+</style>
+
 </head>
+
 <body>
 
-    <div class="card">
-        <h2>📢 语音播报终端</h2>
-        <p id="status">⚠️ 必须要点击下方按钮激活声音机制</p>
-        <button id="startBtn">点我：激活播报系统</button>
-        <div id="currentMsg" style="margin-top: 20px; font-size: 20px; color: #333;"></div>
-        <div id="log"></div>
-    </div>
+<div id="box">
 
-    <script>
-        const SUPABASE_URL = 'https://tkpwdoenhvzkxrwwomvn.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw';
+<div id="status">
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        let isAudioActivated = false;
+正在连接...
 
-        const statusEl = document.getElementById('status');
-        const startBtn = document.getElementById('startBtn');
-        const logEl = document.getElementById('log');
+</div>
 
-        // 1. 核心步骤：通过用户点击，解锁 iOS 浏览器的播放权限
-        startBtn.addEventListener('click', () => {
-            isAudioActivated = true;
-            statusEl.innerHTML = '<span class="active">🟢 系统已激活！正在后台监听...</span>';
-            startBtn.style.display = 'none'; // 隐藏按钮
+<div id="msg">
 
-            // 测试一下声音
-            speak("播报系统已成功激活");
-        });
+等待广播...
 
-        // 2. 订阅 Supabase 广播通道
-        const channel = supabase.channel('home-broadcast');
+</div>
 
-        channel.on('broadcast', { event: 'tts-speak' }, (response) => {
-            const txt = response.payload.text;
-            addLog(`收到消息: "${txt}"`);
-            
-            if (isAudioActivated) {
-                speak(txt);
-            } else {
-                addLog('❌ 播报失败：手机端尚未点击按钮激活声音');
-            }
-        }).subscribe();
+</div>
 
-        // 3. 文本转语音函数 (利用原生 Web Speech API)
-        function speak(text) {
-            if (!window.speechSynthesis) {
-                addLog('错误：该浏览器不支持语音合成');
-                return;
-            }
-            // 停止当前正在播放的声音（防止多条消息撞车）
-            window.speechSynthesis.cancel(); 
+<script>
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-CN'; // 设置为中文
-            utterance.rate = 1.0;     // 语速 (0.1 - 10)
-            utterance.pitch = 1.0;    // 音调 (0 - 2)
+const SUPABASE_URL="https://tkpwdoenhvzkxrwwomvn.supabase.co";
 
-            document.getElementById('currentMsg').innerText = `正在播报：${text}`;
-            window.speechSynthesis.speak(utterance);
-        }
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw";
 
-        function addLog(msg) {
-            const p = document.createElement('p');
-            p.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logEl.insertBefore(p, logEl.firstChild);
-        }
-    </script>
+const client=supabase.createClient(
+
+    SUPABASE_URL,
+
+    SUPABASE_KEY
+
+);
+
+const queue=[];
+
+let speaking=false;
+
+let lastId=0;
+
+document.body.addEventListener("click",()=>{
+
+    speechSynthesis.cancel();
+
+},{once:true});
+
+function speakNext(){
+
+    if(speaking)return;
+
+    if(queue.length===0)return;
+
+    speaking=true;
+
+    const data=queue.shift();
+
+    document.getElementById("msg").innerText=data.content;
+
+    const utter=new SpeechSynthesisUtterance(data.content);
+
+    utter.lang="zh-CN";
+
+    utter.rate=1;
+
+    utter.pitch=1;
+
+    utter.volume=1;
+
+    utter.onend=()=>{
+
+        speaking=false;
+
+        speakNext();
+
+    };
+
+    utter.onerror=()=>{
+
+        speaking=false;
+
+        speakNext();
+
+    };
+
+    speechSynthesis.speak(utter);
+
+}
+
+document.getElementById("status").innerText="已连接";
+
+client
+
+.channel("messages-channel")
+
+.on(
+
+"postgres_changes",
+
+{
+
+event:"INSERT",
+
+schema:"public",
+
+table:"messages"
+
+},
+
+(payload)=>{
+
+    const row=payload.new;
+
+    if(row.id<=lastId){
+
+        return;
+
+    }
+
+    lastId=row.id;
+
+    queue.push(row);
+
+    speakNext();
+
+}
+
+)
+
+.subscribe((status)=>{
+
+    document.getElementById("status").innerText=
+
+    "状态："+status;
+
+});
+
+setInterval(()=>{
+
+    if(document.hidden){
+
+        return;
+
+    }
+
+    if(!speaking){
+
+        speakNext();
+
+    }
+
+},1000);
+
+</script>
+
 </body>
+
 </html>

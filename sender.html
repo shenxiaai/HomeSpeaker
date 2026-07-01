@@ -132,11 +132,13 @@ async function send(){
 
     document.getElementById("status").innerHTML="发送中...";
 
-    const {error}=await client
+    const { data, error } = await client
     .from("messages")
-    .insert({
-        content:text
-    });
+    .insert([
+      {
+        content: text
+      }
+    ]);
 
     if(error){
 

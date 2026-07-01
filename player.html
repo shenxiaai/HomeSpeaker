@@ -159,45 +159,27 @@ function speakNext(){
 
 document.getElementById("status").innerText="已连接";
 
-client
+const channel = client.channel("messages-channel");
 
-.channel("messages-channel")
+channel.on(
+    "postgres_changes",
+    {
+        event: "INSERT",
+        schema: "public",
+        table: "messages"
+    },
+    (payload) => {
 
-.on(
+        console.log(payload.new.id);
 
-"postgres_changes",
+        queue.push(payload.new);
 
-{
+        speakNext();
 
-event:"INSERT",
+    }
+);
 
-schema:"public",
-
-table:"messages"
-
-},
-
-(payload)=>{
-
-    const row=payload.new;
-
-    lastId=row.id;
-
-    queue.push(row);
-
-    speakNext();
-
-}
-
-)
-
-.subscribe((status)=>{
-
-    document.getElementById("status").innerText=
-
-    "状态："+status;
-
-});
+channel.subscribe();
 
 setInterval(()=>{
 

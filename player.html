@@ -99,9 +99,10 @@ const client=supabase.createClient(
 
 const queue=[];
 
-let speaking=false;
+// 新增：用于记录已经处理过的消息ID
+const receivedIds = new Set();
 
-let lastId=0;
+let speaking=false;
 
 document.body.addEventListener("click",()=>{
 
@@ -168,11 +169,19 @@ channel.on(
         schema: "public",
         table: "messages"
     },
-    (payload) => {
+    (payload)=>{
 
-        console.log(payload.new.id);
+        const row = payload.new;
 
-        queue.push(payload.new);
+        // 如果已经处理过，就直接忽略
+         if(receivedIds.has(row.id)){
+            return;
+        }
+
+        // 记录已处理
+        receivedIds.add(row.id);
+
+        queue.push(row);
 
         speakNext();
 

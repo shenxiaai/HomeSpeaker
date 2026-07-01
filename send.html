@@ -36,14 +36,17 @@
         channel.subscribe((status) => {
             if (status === 'SUBSCRIBED') {
                 document.getElementById('status').innerText = '🟢 服务连接成功，可以发送！';
+                console.log('🟢 服务连接成功，可以发送！');
             } else {
                 document.getElementById('status').innerText = '🔴 连接状态：' + status;
+                console.log('🔴 连接状态：' + status);
             }
         });
 
         // 4. 点击按钮发送消息
         document.getElementById('sendBtn').addEventListener('click', async () => {
             const input = document.getElementById('textInput');
+            console.log('输入内容为：' + input);
             const message = input.value.trim();
             
             if (!message) {

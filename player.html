@@ -66,28 +66,41 @@ document.body.addEventListener("click",()=>{
 },{once:true});
 
 function speakNext(){
-    if(speaking) {return; }
-    if(queue.length === 0) {return;}
+    console.log("speakNext triggered:", data.content);
+    console.log("voices:", speechSynthesis.getVoices().length);
+    if(speaking) return;
+    if(queue.length === 0) return;
     speaking = true;
-    const data=queue.shift();
-    document.getElementById("msg").innerText=data.content;
-    const utter=new SpeechSynthesisUtterance(data.content);
-    utter.lang="zh-CN";
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utter);
-    utter.rate=1;
-    utter.pitch=1;
-    utter.volume=1;
-    utter.onend=()=>{
-        speaking=false;
+    const data = queue.shift();
+    document.getElementById("msg").innerText = data.content;
+    const utter = new SpeechSynthesisUtterance(data.content);
+    utter.lang = "zh-CN";
+    utter.rate = 1;
+    utter.pitch = 1;
+    utter.volume = 1;
+    utter.onend = () => {
+        speaking = false;
+        speakNext();
+    };
+    utter.onerror = (e) => {
+        console.error("speech error:", e);
+        speaking = false;
         speakNext();
     };
 
-    utter.onerror=()=>{
-        speaking=false;
-        speakNext();
+    // ❗关键修复：不要频繁 cancel
+    // speechSynthesis.cancel();  ← 删掉这一行
+
+    // ❗确保 voices ready
+    const trySpeak = () => {
+        speechSynthesis.speak(utter);
     };
 
+    if (speechSynthesis.getVoices().length === 0) {
+        speechSynthesis.onvoiceschanged = trySpeak;
+    } else {
+        trySpeak();
+    }
 }
 
 document.getElementById("status").innerText="已连接";

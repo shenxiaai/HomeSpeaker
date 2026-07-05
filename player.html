@@ -168,6 +168,7 @@ const scheduleRunKey = new Set(); // 防重复执行记录
 
 function checkSchedule() {
     const now = new Date();
+    console.log("CHECK RUNNING:", now.toLocaleTimeString());
     const h = now.getHours();
     const m = now.getMinutes();
     const key = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
@@ -189,16 +190,18 @@ function checkSchedule() {
 
 // 调度器
 function scheduleLoop() {
-    console.log('enter in loop func');
     const now = new Date();
-    const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    const delay = 1000 - now.getMilliseconds();
     console.log("next check in(ms):", delay);
-
     setTimeout(() => {
-        console.log("checkSchedule fired:", new Date().toLocaleTimeString());
-        checkSchedule();
+        try {
+            console.log("checkSchedule fired:", new Date().toLocaleTimeString());
+            checkSchedule();
+        } catch (e) {
+            console.error("scheduler error:", e);
+        }
         scheduleLoop();
-    }, delay);
+    }, delay > 0 ? delay : 1000);
 }
 
 scheduleLoop(); // 启动每日定时任务

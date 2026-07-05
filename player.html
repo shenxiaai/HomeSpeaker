@@ -56,7 +56,7 @@
             ////////////////////////////////////////////////////
     
             // 所有待播放的语音内容都会进入这个队列
-            const queue=[];
+            const queue = [];
             
             // 用于去重，避免 Supabase 重复消息触发
             const receivedIds = new Set();
@@ -80,23 +80,22 @@
             // 4. 核心播放函数（队列驱动播放引擎）
             ////////////////////////////////////////////////////
             
-            function speakNext(){
-            
+            function speakNext () {
                 // 如果正在播放 or 队列为空，直接返回
                 if(speaking) {return; }
                 if(queue.length===0) {return; }
             
                 // 标记正在播放，防止并发进入
-                speaking=true;
+                speaking = true;
             
                 // 取出队列第一条消息
-                const data=queue.shift();
+                const data = queue.shift();
             
                 // 更新 UI 显示当前播放内容
                 document.getElementById("msg").innerText=data.content;
             
                 // 创建语音对象（浏览器 TTS）
-                const utter=new SpeechSynthesisUtterance(data.content);
+                const utter = new SpeechSynthesisUtterance(data.content);
             
                 // 设置语音参数（中文 + 默认语速）
                 utter.lang = "zh-CN";
@@ -108,8 +107,8 @@
                 // 播放结束回调：继续播放队列
                 ////////////////////////////////////////////////////
             
-                utter.onend=()=>{
-                    speaking=false;
+                utter.onend = () => {
+                    speaking = false;
                     speakNext(); // 自动播放下一条
                 };
             
@@ -117,7 +116,7 @@
                 // 播放错误处理（防止队列卡死）
                 ////////////////////////////////////////////////////
             
-                utter.onerror=()=>{
+                utter.onerror = () => {
                     speaking = false;
                     speakNext();
                 };
@@ -149,15 +148,13 @@
                     schema: "public",
                     table: "messages"
                 },
-                (payload)=>{
+                (payload) => {
                     const row = payload.new;
             
                     ////////////////////////////////////////////////////
                     // 防止重复消费同一条消息
                     ////////////////////////////////////////////////////
-                    if(receivedIds.has(row.id)){
-                        return;
-                    }
+                    if( receivedIds.has(row.id) ) { return; }
             
                     // 标记已处理
                     receivedIds.add(row.id);
@@ -194,7 +191,8 @@
               {
                   id: "wake_up_annie",
                   hour: 11,
-                  minute: 33,
+                  minute: 42,
+                  second: 0,
                   text: "Annie，起床啦"
               }
           ];
@@ -202,13 +200,14 @@
           const dailyTaskRunKey = new Set();
 
           // 定时任务检查
-          function checkDailyTasks(){
+          function checkDailyTasks () {
               const now = new Date();
               const h = now.getHours();
               const m = now.getMinutes();
+              const ss = now.getSeconds();
               for(const task of DAILY_TASKS){
                   // 时间匹配
-                  if(task.hour === h && task.minute === m){
+                  if(task.hour === h && task.minute === m && task.second === ss) {
                       // 防止同一分钟重复触发
                       const key = `${task.id}_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
                       if(dailyTaskRunKey.has(key)){

@@ -177,7 +177,7 @@
             // 6. 保险机制（防止播放卡住）
             ////////////////////////////////////////////////////
             
-            setInterval(()=>{
+            setInterval(() => {
                 // 页面在后台时不执行（节省资源）
                 if(document.hidden){ return; }
             
@@ -185,7 +185,47 @@
                 if(!speaking){
                     speakNext();
                 }
+                // ⭐ 新增：定时任务检查
+                checkDailyTasks();
             },1000);
+
+          // 定时任务列表
+          const DAILY_TASKS = [
+              {
+                  id: "wake_up_annie",
+                  hour: 7,
+                  minute: 0,
+                  text: "Annie，起床啦"
+              }
+          ];
+
+          const dailyTaskRunKey = new Set();
+
+          // 定时任务检查
+          function checkDailyTasks(){
+              const now = new Date();
+              const h = now.getHours();
+              const m = now.getMinutes();
+              for(const task of DAILY_TASKS){
+                  // 时间匹配
+                  if(task.hour === h && task.minute === m){
+                      // 防止同一分钟重复触发
+                      const key = `${task.id}_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
+                      if(dailyTaskRunKey.has(key)){
+                          continue;
+                      }
+                      dailyTaskRunKey.add(key);
+          
+                      // 加入播放队列（复用你现有系统）
+                      queue.push({
+                          id: key,
+                          content: task.text
+                      });
+          
+                      speakNext();
+                  }
+              }
+          }
         </script>
     </body>
 </html>

@@ -66,8 +66,6 @@ document.body.addEventListener("click",()=>{
 },{once:true});
 
 function speakNext(){
-    console.log("speakNext triggered:", data.content);
-    console.log("voices:", speechSynthesis.getVoices().length);
     if(speaking) return;
     if(queue.length === 0) return;
     speaking = true;

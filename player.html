@@ -137,7 +137,7 @@ setInterval(()=>{
 },1000);
 
 
-const schedule = [
+const SCHEDULE = [
     {
         id: "morning_1",
         hour: 7,
@@ -153,8 +153,8 @@ const schedule = [
     {
         id: "morning_3",
         hour: 10,
-        minute: 21,
-        text: "test"
+        minute: 27,
+        text: "test已启动"
     },
     {
         id: "night_1",
@@ -171,7 +171,7 @@ function checkSchedule() {
     const h = now.getHours();
     const m = now.getMinutes();
     const key = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
-    for (const task of schedule) {
+    for (const task of SCHEDULE) {
         if (task.hour === h && task.minute === m) {
             const runKey = task.id + "_" + key;
             if (scheduleRunKey.has(runKey)) {

@@ -212,7 +212,7 @@ const schedule = [
     {
         id: "morning_3",
         hour: 10,
-        minute: 14,
+        minute: 17,
         text: "test"
     },
     {
@@ -248,20 +248,15 @@ function checkSchedule() {
 
 // 调度器
 function scheduleLoop() {
-
     const now = new Date();
-
-    const delay =
-        (60 - now.getSeconds()) * 1000
-        - now.getMilliseconds();
+    const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
 
     setTimeout(() => {
-
         checkSchedule();
         scheduleLoop();
-
     }, delay);
-
+    
+    console.log("scheduler started:", new Date().toLocaleTimeString());
 }
 
 scheduleLoop(); // 启动每日定时任务

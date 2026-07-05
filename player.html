@@ -189,18 +189,9 @@ channel.on(
 channel.subscribe();
 
 setInterval(()=>{
+    if(document.hidden){return;}
 
-    if(document.hidden){
-
-        return;
-
-    }
-
-    if(!speaking){
-
-        speakNext();
-
-    }
+    if(!speaking){speakNext();}
 
 },1000);
 
@@ -217,6 +208,12 @@ const schedule = [
         hour: 7,
         minute: 30,
         text: "检查书包、水杯和作业。"
+    },
+    {
+        id: "morning_3",
+        hour: 10,
+        minute: 10,
+        text: "test"
     },
     {
         id: "night_1",

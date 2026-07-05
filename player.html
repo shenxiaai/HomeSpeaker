@@ -1,212 +1,127 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HomeSpeaker Player</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-body{
-    margin:0;
-    background:#222;
-    color:white;
-    font-family:Arial;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeSpeaker Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body{
+            margin:0;
+            background:#222;
+            color:white;
+            font-family:Arial;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
 
-#box{
-    text-align:center;
-    width:90%;
-}
+        #box{
+            text-align:center;
+            width:90%;
+        }
+        
+        #status{
+            color:#00ff88;
+            font-size:20px;
+            margin-bottom:30px;
+        }
+        
+        #msg{
+            font-size:42px;
+            line-height:1.6;
+            word-break:break-all;
+        }
+    </style>
+  </head>
 
-#status{
-    color:#00ff88;
-    font-size:20px;
-    margin-bottom:30px;
-}
-
-#msg{
-    font-size:42px;
-    line-height:1.6;
-    word-break:break-all;
-}
-
-</style>
-
-</head>
-
-<body>
-  <div id="box">
-    <div id="status">正在连接...</div>
-    <div id="msg">等待广播...</div>
-  </div>
-
-<script>
-
-const SUPABASE_URL="https://tkpwdoenhvzkxrwwomvn.supabase.co";
-const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw";
-const client=supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-);
-
-const queue=[];
-
-// 新增：用于记录已经处理过的消息ID
-const receivedIds = new Set();
-
-let speaking=false;
-
-document.body.addEventListener("click",()=>{
-    const u=new SpeechSynthesisUtterance("播放器已启动");
-    speechSynthesis.speak(u);
-},{once:true});
-
-function speakNext(){
-    if(speaking) return;
-    if(queue.length === 0) return;
-    speaking = true;
-    const data = queue.shift();
-    document.getElementById("msg").innerText = data.content;
-    const utter = new SpeechSynthesisUtterance(data.content);
-    utter.lang = "zh-CN";
-    utter.rate = 1;
-    utter.pitch = 1;
-    utter.volume = 1;
-    utter.onend = () => {
-        speaking = false;
-        speakNext();
-    };
-    utter.onerror = (e) => {
-        console.error("speech error:", e);
-        speaking = false;
-        speakNext();
-    };
-
-    // ❗关键修复：不要频繁 cancel
-    // speechSynthesis.cancel();  ← 删掉这一行
-
-    // ❗确保 voices ready
-    const trySpeak = () => {
-        speechSynthesis.speak(utter);
-    };
-
-    if (speechSynthesis.getVoices().length === 0) {
-        speechSynthesis.onvoiceschanged = trySpeak;
-    } else {
-        trySpeak();
-    }
-}
-
-document.getElementById("status").innerText="已连接";
-
-const channel = client.channel("messages-channel");
-
-channel.on(
-    "postgres_changes",
-    {
-        event: "INSERT",
-        schema: "public",
-        table: "messages"
-    },
-    (payload)=>{
-
-        const row = payload.new;
-
-        // 如果已经处理过，就直接忽略
-         if(receivedIds.has(row.id)) { return; }
-
-        // 记录已处理
-        receivedIds.add(row.id);
-        queue.push(row);
-        speakNext();
-    }
-);
-
-channel.subscribe();
-
-setInterval(()=>{
-    if(document.hidden){return;}
-
-    if(!speaking){speakNext();}
-
-},1000);
-
-
-const SCHEDULE = [
-    {
-        id: "morning_1",
-        hour: 7,
-        minute: 8,
-        text: "Annie，早上好，起床啦！"
-    },
-    {
-        id: "morning_2",
-        hour: 7,
-        minute: 30,
-        text: "检查书包、水杯和作业。"
-    },
-    {
-        id: "morning_3",
-        hour: 10,
-        minute: 53,
-        text: "test已启动"
-    },
-    {
-        id: "night_1",
-        hour: 20,
-        minute: 0,
-        text: "开始今天的识字练习吧。"
-    }
-];
-
-const scheduleRunKey = new Set(); // 防重复执行记录
-
-function checkSchedule() {
-    const now = new Date();
-    console.log("CHECK RUNNING:", now.toLocaleTimeString());
-    const h = now.getHours();
-    const m = now.getMinutes();
-    const key = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
-    for (const task of SCHEDULE) {
-        if (task.hour === h && task.minute === m) {
-            const runKey = task.id + "_" + key;
-            if (scheduleRunKey.has(runKey)) {
-                continue;
+    <body>
+        <div id="box">
+            <div id="status">正在连接...</div>
+            <div id="msg">等待广播...</div>
+        </div>
+    
+        <script>
+        const SUPABASE_URL="https://tkpwdoenhvzkxrwwomvn.supabase.co";
+        const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw";
+        
+        const client=supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        );
+        
+        const queue=[];
+        
+        // 新增：用于记录已经处理过的消息ID
+        const receivedIds = new Set();
+        let speaking=false;
+        
+        document.body.addEventListener("click",()=>{
+            const u=new SpeechSynthesisUtterance("播放器已启动");
+            speechSynthesis.speak(u);
+        },{once:true});
+        
+        function speakNext(){
+            if(speaking)return;
+            if(queue.length===0)return;
+            speaking=true;
+            const data=queue.shift();
+            document.getElementById("msg").innerText=data.content;
+            const utter=new SpeechSynthesisUtterance(data.content);
+        
+            utter.lang="zh-CN";
+        
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utter);
+        
+            utter.rate=1;
+            utter.pitch=1;
+            utter.volume=1;
+        
+            utter.onend=()=>{
+                speaking=false;
+                speakNext();
+            };
+        
+            utter.onerror=()=>{
+                speaking=false;
+                speakNext();
+            };
+        }
+        
+        document.getElementById("status").innerText="已连接";
+        const channel = client.channel("messages-channel");
+        
+        channel.on(
+            "postgres_changes",
+            {
+                event: "INSERT",
+                schema: "public",
+                table: "messages"
+            },
+            (payload)=>{
+                const row = payload.new;
+        
+                // 如果已经处理过，就直接忽略
+                 if(receivedIds.has(row.id)){
+                    return;
+                }
+        
+                // 记录已处理
+                receivedIds.add(row.id);
+                queue.push(row);
+                speakNext();
             }
-            scheduleRunKey.add(runKey);
-            queue.push({
-                id: runKey,
-                content: task.text
-            });
-            speakNext();
-        }
-    }
-}
-
-// 调度器
-function scheduleLoop() {
-    const now = new Date();
-    const delay = 1000 - now.getMilliseconds();
-    console.log("next check in(ms):", delay);
-    setTimeout(() => {
-        try {
-            console.log("checkSchedule fired:", new Date().toLocaleTimeString());
-            checkSchedule();
-        } catch (e) {
-            console.error("scheduler error:", e);
-        }
-        scheduleLoop();
-    }, delay > 0 ? delay : 1000);
-}
-
-scheduleLoop(); // 启动每日定时任务
-
-</script>
-
-</body>
-
+        );
+        
+        channel.subscribe();
+        
+        setInterval(()=>{
+            if(document.hidden){ return; }
+            if(!speaking){ speakNext(); }
+        },1000);
+        
+        </script>
+    </body>
 </html>

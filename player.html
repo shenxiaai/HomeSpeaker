@@ -189,20 +189,82 @@ channel.on(
 channel.subscribe();
 
 setInterval(()=>{
+    if(document.hidden){return;}
 
-    if(document.hidden){
-
-        return;
-
-    }
-
-    if(!speaking){
-
-        speakNext();
-
-    }
+    if(!speaking){speakNext();}
 
 },1000);
+
+
+const schedule = [
+    {
+        id: "morning_1",
+        hour: 7,
+        minute: 8,
+        text: "Annie，早上好，起床啦！"
+    },
+    {
+        id: "morning_2",
+        hour: 7,
+        minute: 30,
+        text: "检查书包、水杯和作业。"
+    },
+    {
+        id: "morning_3",
+        hour: 10,
+        minute: 14,
+        text: "test"
+    },
+    {
+        id: "night_1",
+        hour: 20,
+        minute: 0,
+        text: "开始今天的识字练习吧。"
+    }
+];
+
+const scheduleRunKey = new Set(); // 防重复执行记录
+
+function checkSchedule() {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    const key = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
+    for (const task of schedule) {
+        if (task.hour === h && task.minute === m) {
+            const runKey = task.id + "_" + key;
+            if (scheduleRunKey.has(runKey)) {
+                continue;
+            }
+            scheduleRunKey.add(runKey);
+            queue.push({
+                id: runKey,
+                content: task.text
+            });
+            speakNext();
+        }
+    }
+}
+
+// 调度器
+function scheduleLoop() {
+
+    const now = new Date();
+
+    const delay =
+        (60 - now.getSeconds()) * 1000
+        - now.getMilliseconds();
+
+    setTimeout(() => {
+
+        checkSchedule();
+        scheduleLoop();
+
+    }, delay);
+
+}
+
+scheduleLoop(); // 启动每日定时任务
 
 </script>
 

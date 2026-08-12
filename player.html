@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HomeSpeaker Player</title>
@@ -34,246 +34,331 @@
             word-break:break-all;
         }
     </style>
-  </head>
+</head>
 
-    <body>
-        <div id="box">
-            <div id="status">正在连接...</div>
-            <div id="msg">等待广播...</div>
-        </div>
-    
-        <script>
-            const SUPABASE_URL="https://tkpwdoenhvzkxrwwomvn.supabase.co";
-            const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw";
-            
-            const client=supabase.createClient(
-                SUPABASE_URL,
-                SUPABASE_KEY
-            );
-    
+<body>
+    <div id="box">
+        <div id="status">连接中...</div>
+        <div id="msg">等待广播...</div>
+    </div>
+
+    <script>
+        const SUPABASE_URL="https://tkpwdoenhvzkxrwwomvn.supabase.co";
+        const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcHdkb2VuaHZ6a3hyd3dvbXZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY1ODksImV4cCI6MjA5ODQwMjU4OX0.gh7Ponb6vb4M3r9RMFlaevyGnzjfVZOmpVhxrsyWrPw";
+        
+        const client=supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        );
+
+        ////////////////////////////////////////////////////
+        // 2. 播放队列系统（核心结构）
+        ////////////////////////////////////////////////////
+
+        // 所有待播放的语音内容都会进入这个队列
+        const queue = [];
+        
+        // 用于去重，避免 Supabase 重复消息触发
+        const receivedIds = new Set();
+        
+        // 当前是否正在播放（避免并发播放）
+        let speaking = false;
+
+        // 避免上一轮定时查询未结束时再次查询
+        let checkingScheduledMessages = false;
+        
+        ////////////////////////////////////////////////////
+        // 3. 用户首次点击解锁语音（Android 必须）
+        ////////////////////////////////////////////////////
+        
+        document.body.addEventListener("click",()=>{
+            // ⚠️ Android Chrome 需要“用户手势”才能稳定启用语音合成
+            const u = new SpeechSynthesisUtterance("播放器已启动");
+        
+            speechSynthesis.speak(u);
+        
+        },{once:true});
+        
+        ////////////////////////////////////////////////////
+        // 4. 核心播放函数（队列驱动播放引擎）
+        ////////////////////////////////////////////////////
+        
+        function speakNext () {
+            // 如果正在播放 or 队列为空，直接返回
+            if(speaking) {return; }
+            if(queue.length===0) {return; }
+        
+            // 标记正在播放，防止并发进入
+            speaking = true;
+        
+            // 取出队列第一条消息
+            const data = queue.shift();
+        
+            // 更新 UI 显示当前播放内容
+            document.getElementById("msg").innerText=data.content;
+        
+            // 创建语音对象（浏览器 TTS）
+            const utter = new SpeechSynthesisUtterance(data.content);
+        
+            // 设置语音参数（中文 + 默认语速）
+            utter.lang = "zh-CN";
+            utter.rate = 1;
+            utter.pitch = 1;
+            utter.volume = 1;
+        
             ////////////////////////////////////////////////////
-            // 2. 播放队列系统（核心结构）
+            // 播放结束回调：继续播放队列
             ////////////////////////////////////////////////////
-    
-            // 所有待播放的语音内容都会进入这个队列
-            const queue = [];
-            
-            // 用于去重，避免 Supabase 重复消息触发
-            const receivedIds = new Set();
-            
-            // 当前是否正在播放（避免并发播放）
-            let speaking = false;
-            
+        
+            utter.onend = () => {
+                speaking = false;
+                speakNext(); // 自动播放下一条
+            };
+        
             ////////////////////////////////////////////////////
-            // 3. 用户首次点击解锁语音（Android 必须）
+            // 播放错误处理（防止队列卡死）
             ////////////////////////////////////////////////////
-            
-            document.body.addEventListener("click",()=>{
-                // ⚠️ Android Chrome 需要“用户手势”才能稳定启用语音合成
-                const u = new SpeechSynthesisUtterance("播放器已启动");
-            
-                speechSynthesis.speak(u);
-            
-            },{once:true});
-            
+        
+            utter.onerror = () => {
+                speaking = false;
+                speakNext();
+            };
+        
             ////////////////////////////////////////////////////
-            // 4. 核心播放函数（队列驱动播放引擎）
+            // ⚠️ 关键点（Android speechSynthesis 问题区域）
             ////////////////////////////////////////////////////
-            
-            function speakNext () {
-                // 如果正在播放 or 队列为空，直接返回
-                if(speaking) {return; }
-                if(queue.length===0) {return; }
-            
-                // 标记正在播放，防止并发进入
-                speaking = true;
-            
-                // 取出队列第一条消息
-                const data = queue.shift();
-            
-                // 更新 UI 显示当前播放内容
-                document.getElementById("msg").innerText=data.content;
-            
-                // 创建语音对象（浏览器 TTS）
-                const utter = new SpeechSynthesisUtterance(data.content);
-            
-                // 设置语音参数（中文 + 默认语速）
-                utter.lang = "zh-CN";
-                utter.rate = 1;
-                utter.pitch = 1;
-                utter.volume = 1;
-            
+        
+            // ❗你当前代码：没有 cancel + 延迟
+            // speechSynthesis.cancel();  //（已被移除/避免）
+        
+            // 将 speak 放入异步延迟，避免 Android 状态冲突
+            speechSynthesis.speak(utter);
+        }
+        
+        ////////////////////////////////////////////////////
+        // 5. Supabase 实时监听（消息入口）
+        ////////////////////////////////////////////////////
+        
+        document.getElementById("status").innerText="已连接";
+        
+        // 订阅 messages 表 INSERT 事件
+        const channel = client.channel("messages-channel");
+        
+        channel.on(
+            "postgres_changes",
+            {
+                event: "INSERT",
+                schema: "public",
+                table: "messages"
+            },
+            (payload) => {
+                const row = payload.new;
+        
                 ////////////////////////////////////////////////////
-                // 播放结束回调：继续播放队列
+                // 防止重复消费同一条消息
                 ////////////////////////////////////////////////////
-            
-                utter.onend = () => {
-                    speaking = false;
-                    speakNext(); // 自动播放下一条
-                };
-            
+                if(receivedIds.has(row.id)) { return; }
+
                 ////////////////////////////////////////////////////
-                // 播放错误处理（防止队列卡死）
+                // 定时消息统一交给到点查询处理，不由 Realtime 直接播放
                 ////////////////////////////////////////////////////
-            
-                utter.onerror = () => {
-                    speaking = false;
-                    speakNext();
-                };
-            
-                ////////////////////////////////////////////////////
-                // ⚠️ 关键点（Android speechSynthesis 问题区域）
-                ////////////////////////////////////////////////////
-            
-                // ❗你当前代码：没有 cancel + 延迟
-                // speechSynthesis.cancel();  //（已被移除/避免）
-            
-                // 将 speak 放入异步延迟，避免 Android 状态冲突
-                speechSynthesis.speak(utter);
+                if(row.scheduled_at){
+                    const scheduledTime = new Date(row.scheduled_at);
+
+                    if(scheduledTime > new Date()){
+                        return;
+                    }
+
+                    // 极少数情况下 Realtime 到达时消息已经到点，立即补查一次。
+                    checkScheduledMessages();
+                    return;
+                }
+        
+                // 标记已处理
+                receivedIds.add(row.id);
+        
+                // 加入播放队列
+                queue.push(row);
+        
+                // 触发播放逻辑
+                speakNext();
             }
-            
-            ////////////////////////////////////////////////////
-            // 5. Supabase 实时监听（消息入口）
-            ////////////////////////////////////////////////////
-            
-            document.getElementById("status").innerText="已连接";
-            
-            // 订阅 messages 表 INSERT 事件
-            const channel = client.channel("messages-channel");
-            
-            channel.on(
-                "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "messages"
-                },
-                (payload) => {
-                    const row = payload.new;
-            
-                    ////////////////////////////////////////////////////
-                    // 防止重复消费同一条消息
-                    ////////////////////////////////////////////////////
-                    if( receivedIds.has(row.id) ) { return; }
-            
-                    // 标记已处理
+        );
+        
+        // 启动实时监听
+        channel.subscribe();
+        
+        ////////////////////////////////////////////////////
+        // 6. 保险机制（防止播放卡住）
+        ////////////////////////////////////////////////////
+        
+        setInterval(() => {
+            // 页面在后台时不执行（节省资源）
+            if(document.hidden){ return; }
+        
+            // 如果队列有内容但没在播放，强制恢复
+            if(!speaking){
+                speakNext();
+            }
+            // ⭐ 定时任务检查
+            checkDailyTasks();
+        },1000);
+
+        // 定时任务列表
+        const DAILY_TASKS = [
+            {
+                id: "chinese-reading-1",
+                hour: 9,
+                minute: 0,
+                second: 0,
+                text: "Annie，上午读书15分钟，下午读书10分钟。"
+            },
+            {
+                id: "chinese-reading-2",
+                hour: 12,
+                minute: 2,
+                second: 0,
+                text: "Annie，下午读书10分钟。"
+            },
+            {
+                id: "chinese-reading-3",
+                hour: 15,
+                minute: 30,
+                second: 0,
+                text: "Annie，下午读书10分钟。"
+            },
+            {
+                id: "chinese-reading-4",
+                hour: 10,
+                minute: 30,
+                second: 0,
+                text: "Annie，年轮app要复习了。"
+            },
+            {
+                id: "chinese-reading-5",
+                hour: 14,
+                minute: 30,
+                second: 0,
+                text: "Annie，年轮app要复习了。"
+            },
+            {
+                id: "chinese-reading-6",
+                hour: 7,
+                minute: 40,
+                second: 0,
+                text: "Annie，今天要好好跳绳，跳100个休息30秒，一共跳600个。"
+            },
+            {
+                id: "chinese-reading-7",
+                hour: 11,
+                minute: 5,
+                second: 0,
+                text: "Annie，今天要好好跳绳，跳100个休息30秒，一共跳600个。"
+            },
+            {
+                id: "chinese-reading-8",
+                hour: 15,
+                minute: 20,
+                second: 0,
+                text: "Annie，今天要好好跳绳，跳100个休息30秒，一共跳600个。"
+            }
+        ];
+
+        const dailyTaskRunKey = new Set();
+
+        // 定时任务检查
+        function checkDailyTasks () {
+            const now = new Date();
+            const h = now.getHours();
+            const m = now.getMinutes();
+            const ss = now.getSeconds();
+            for(const task of DAILY_TASKS){
+                // 时间匹配
+                if(task.hour === h && task.minute === m && task.second === ss) {
+                    // 防止同一分钟重复触发
+                    const key = `${task.id}_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
+                    if(dailyTaskRunKey.has(key)){
+                        continue;
+                    }
+                    dailyTaskRunKey.add(key);
+        
+                    // 加入播放队列（复用你现有系统）
+                    queue.push({
+                        id: key,
+                        content: task.text
+                    });
+        
+                    speakNext();
+                }
+            }
+        }
+
+        ////////////////////////////////////////////////////
+        // 7. 一次性定时播报检查
+        ////////////////////////////////////////////////////
+
+        async function checkScheduledMessages(){
+            if(checkingScheduledMessages){
+                return;
+            }
+
+            checkingScheduledMessages = true;
+
+            try{
+                const now = new Date().toISOString();
+
+                const { data, error } = await client
+                    .from("messages")
+                    .select("*")
+                    .not("scheduled_at", "is", null)
+                    .is("played_at", null)
+                    .lte("scheduled_at", now)
+                    .order("scheduled_at", {ascending:true});
+
+                if(error){
+                    console.error("检查定时消息失败：", error);
+                    return;
+                }
+
+                if(!data || data.length===0){
+                    return;
+                }
+
+                for(const row of data){
+                    if(receivedIds.has(row.id)){
+                        continue;
+                    }
+
                     receivedIds.add(row.id);
-            
-                    // 加入播放队列
                     queue.push(row);
-            
-                    // 触发播放逻辑
-                    speakNext();
+
+                    // 加入现有播放队列后，标记为已处理。
+                    const { error:updateError } = await client
+                        .from("messages")
+                        .update({played_at:new Date().toISOString()})
+                        .eq("id",row.id);
+
+                    if(updateError){
+                        console.error("更新定时消息状态失败：", updateError);
+                    }
                 }
-            );
-            
-            // 启动实时监听
-            channel.subscribe();
-            
-            ////////////////////////////////////////////////////
-            // 6. 保险机制（防止播放卡住）
-            ////////////////////////////////////////////////////
-            
-            setInterval(() => {
-                // 页面在后台时不执行（节省资源）
-                if(document.hidden){ return; }
-            
-                // 如果队列有内容但没在播放，强制恢复
-                if(!speaking){
-                    speakNext();
-                }
-                // ⭐ 新增：定时任务检查
-                checkDailyTasks();
-            },1000);
 
-          // 定时任务列表
-          const DAILY_TASKS = [
-              {
-                  id: "chinese-reading-1",
-                  hour: 9,
-                  minute: 0,
-                  second: 0,
-                  text: "Annie，上午读书15分钟，下午读书10分钟。"
-              },
-              {
-                  id: "chinese-reading-2",
-                  hour: 12,
-                  minute: 2,
-                  second: 0,
-                  text: "Annie，下午读书10分钟。"
-              },
-              {
-                  id: "chinese-reading-3",
-                  hour: 15,
-                  minute: 30,
-                  second: 0,
-                  text: "Annie，下午读书10分钟。"
-              },
-              {
-                  id: "chinese-reading-4",
-                  hour: 10,
-                  minute: 30,
-                  second: 0,
-                  text: "Annie，年轮app要复习了。"
-              },
-              {
-                  id: "chinese-reading-5",
-                  hour: 14,
-                  minute: 30,
-                  second: 0,
-                  text: "Annie，年轮app要复习了。"
-              },
-              {
-                  id: "chinese-reading-6",
-                  hour: 07,
-                  minute: 40,
-                  second: 0,
-                  text: "Annie，今天要好好跳绳，跳100个休息30秒，一共跳600个。"
-              },
-              {
-                  id: "chinese-reading-7",
-                  hour: 11,
-                  minute: 05,
-                  second: 0,
-                  text: "Annie，今天要好好跳绳，跳100个休息30秒，一共跳600个。"
-              },
-              {
-                  id: "chinese-reading-8",
-                  hour: 15,
-                  minute: 20,
-                  second: 0,
-                  text: "Annie，今天要好好跳绳，跳100个休息30秒，一共跳600个。"
-              }
-          ];
+                speakNext();
+            }finally{
+                checkingScheduledMessages = false;
+            }
+        }
 
-          const dailyTaskRunKey = new Set();
+        // 页面启动时立即补查，之后每 10 秒检查一次。
+        checkScheduledMessages();
 
-          // 定时任务检查
-          function checkDailyTasks () {
-              const now = new Date();
-              const h = now.getHours();
-              const m = now.getMinutes();
-              const ss = now.getSeconds();
-              for(const task of DAILY_TASKS){
-                  // 时间匹配
-                  if(task.hour === h && task.minute === m && task.second === ss) {
-                      // 防止同一分钟重复触发
-                      const key = `${task.id}_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${h}-${m}`;
-                      if(dailyTaskRunKey.has(key)){
-                          continue;
-                      }
-                      dailyTaskRunKey.add(key);
-          
-                      // 加入播放队列（复用你现有系统）
-                      queue.push({
-                          id: key,
-                          content: task.text
-                      });
-          
-                      speakNext();
-                  }
-              }
-          }
-        </script>
-    </body>
+        setInterval(() => {
+            if(document.hidden){
+                return;
+            }
+
+            checkScheduledMessages();
+        },10000);
+    </script>
+</body>
 </html>
